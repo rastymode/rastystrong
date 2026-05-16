@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>StrongLifts 5×5</title>
+<meta name="description" content="A simple StrongLifts 5×5 workout tracker." />
+<meta name="theme-color" content="#e8732e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="StrongLifts 5×5" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23e8732e'/%3E%3Ctext x='50' y='52' font-size='58' text-anchor='middle' dominant-baseline='central'%3E🏋️%3C/text%3E%3C/svg%3E" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #e9e9ec; }
+  * { -webkit-tap-highlight-color: transparent; }
+  body { overscroll-behavior-y: none; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="display:flex;height:100dvh;align-items:center;justify-content:center;background:#f3f3f5;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#8a8a8e;font-weight:600;font-size:14px;">
+    Loading StrongLifts 5×5…
+  </div>
+</div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+/* ---------- theme ---------- */
+const ACCENT = "#e8732e";
+const ACCENT_SOFT = "#fdefe5";
+const FAIL = "#e0463c";
+const FAIL_SOFT = "#fcecea";
+const INK = "#1c1c1e";
+const MUTE = "#8a8a8e";
+const TRACK = "#e6e6e9";
+const BG = "#f3f3f5";
+const CARD_SHADOW = "0 1px 2px rgba(17,17,26,0.04), 0 4px 14px rgba(17,17,26,0.05)";
+
+/* ---------- icons ---------- */
+function Svg({ size = 24, color = "currentColor", strokeWidth = 2, className, style, children }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+      className={className} style={style}>
+      {children}
+    </svg>
+  );
+}
+const Dumbbell = (p) => <Svg {...p}><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11" /></Svg>;
+const ChevronRight = (p) => <Svg {...p}><path d="m9 18 6-6-6-6" /></Svg>;
+const ChevronLeft = (p) => <Svg {...p}><path d="m15 18-6-6 6-6" /></Svg>;
+const Check = (p) => <Svg {...p}><polyline points="20 6 9 17 4 12" /></Svg>;
+const X = (p) => <Svg {...p}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></Svg>;
+const Plus = (p) => <Svg {...p}><path d="M5 12h14" /><path d="M12 5v14" /></Svg>;
+const Minus = (p) => <Svg {...p}><path d="M5 12h14" /></Svg>;
+const Trophy = (p) => <Svg {...p}>
+  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+  <path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+  <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+  <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+</Svg>;
+const RotateCcw = (p) => <Svg {...p}>
+  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" />
+</Svg>;
+const SettingsIcon = (p) => <Svg {...p}>
+  <path d="M20 7h-9" /><path d="M14 17H5" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" />
+</Svg>;
+const BarChart3 = (p) => <Svg {...p}>
+  <path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" />
+</Svg>;
+const Timer = (p) => <Svg {...p}>
+  <line x1="10" x2="14" y1="2" y2="2" /><line x1="12" x2="15" y1="14" y2="11" /><circle cx="12" cy="14" r="8" />
+</Svg>;
+const Info = (p) => <Svg {...p}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></Svg>;
+const Calendar = (p) => <Svg {...p}>
+  <path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" />
+</Svg>;
+const TrendingUp = (p) => <Svg {...p}>
+  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+</Svg>;
+const Zap = (p) => <Svg {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Svg>;
+
+/* ---------- program data ---------- */
+const STORAGE_KEY = "strong5x5:v1";
+
+const WORKOUTS = {
+  A: [
+    { name: "Squat", sets: 5, reps: 5 },
+    { name: "Bench Press", sets: 5, reps: 5 },
+    { name: "Barbell Row", sets: 5, reps: 5 },
+  ],
+  B: [
+    { name: "Squat", sets: 5, reps: 5 },
+    { name: "Overhead Press", sets: 5, reps: 5 },
+    { name: "Deadlift", sets: 1, reps: 5 },
+  ],
+};
+const INC = {
+  lbs: { Squat: 5, "Bench Press": 5, "Barbell Row": 5, "Overhead Press": 5, Deadlift: 10 },
+  kg: { Squat: 2.5, "Bench Press": 2.5, "Barbell Row": 2.5, "Overhead Press": 2.5, Deadlift: 5 },
+};
+const DEFAULT_WEIGHTS = {
+  lbs: { Squat: 45, "Bench Press": 45, "Barbell Row": 65, "Overhead Press": 45, Deadlift: 95 },
+  kg: { Squat: 20, "Bench Press": 20, "Barbell Row": 30, "Overhead Press": 20, Deadlift: 40 },
+};
+const BAR = { lbs: 45, kg: 20 };
+const PLATES = { lbs: [45, 35, 25, 10, 5, 2.5], kg: [25, 20, 15, 10, 5, 2.5, 1.25] };
+const STEP = { lbs: 5, kg: 2.5 };
+const ALL_LIFTS = ["Squat", "Bench Press", "Barbell Row", "Overhead Press", "Deadlift"];
+
+/* ---------- helpers ---------- */
+const fmt = (n) => (Number.isInteger(n) ? `${n}` : n.toFixed(1).replace(/\.0$/, ""));
+const comma = (n) => Math.round(n).toLocaleString();
+
+function platesPerSide(total, unit) {
+  let per = (total - BAR[unit]) / 2;
+  const out = [];
+  if (per <= 0.001) return out;
+  for (const p of PLATES[unit]) {
+    while (per >= p - 1e-6) { out.push(p); per -= p; }
+  }
+  return out;
+}
+function deload(weight, unit) {
+  const s = STEP[unit];
+  const r = Math.round((weight * 0.9) / s) * s;
+  return Math.max(BAR[unit], r);
+}
+function convert(weights, from, to) {
+  if (from === to) return { ...weights };
+  const out = {};
+  const s = STEP[to];
+  for (const k in weights) {
+    const v = from === "lbs" ? weights[k] * 0.453592 : weights[k] * 2.20462;
+    out[k] = Math.max(BAR[to], Math.round(v / s) * s);
+  }
+  return out;
+}
+function newSession(type, weights) {
+  const sets = {}, w = {};
+  for (const l of WORKOUTS[type]) {
+    sets[l.name] = Array(l.sets).fill("pending");
+    w[l.name] = weights[l.name];
+  }
+  return { type, startedAt: new Date().toISOString(), sets, weights: w };
+}
+function defaultState() {
+  return {
+    unit: "lbs",
+    weights: { ...DEFAULT_WEIGHTS.lbs },
+    failStreak: Object.fromEntries(ALL_LIFTS.map((l) => [l, 0])),
+    nextType: "A",
+    workoutCount: 0,
+    history: [],
+    session: null,
+  };
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+}
+function saveState(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { console.error("save failed", e); }
+}
+
+/* ---------- audio (rest-timer beep) ---------- */
+let audioCtx = null;
+function ensureAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (e) {}
+}
+function beep() {
+  try {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const tone = (freq, start, dur) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.type = "sine";
+      o.frequency.setValueAtTime(freq, t + start);
+      g.gain.setValueAtTime(0.0001, t + start);
+      g.gain.exponentialRampToValueAtTime(0.35, t + start + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + start + dur);
+      o.start(t + start); o.stop(t + start + dur + 0.05);
+    };
+    tone(880, 0, 0.45);
+    tone(1150, 0.55, 0.5);
+  } catch (e) {}
+}
+
+/* ===================================================================== */
+
+function App() {
+  const [state, setState] = useState(() => {
+    const saved = loadState();
+    let st = saved ? { ...defaultState(), ...saved } : defaultState();
+    if (!st.session) st.session = newSession(st.nextType, st.weights);
+    return st;
+  });
+  const [tab, setTab] = useState("today");
+  const [detail, setDetail] = useState(null);
+  const [summary, setSummary] = useState(null);
+
+  useEffect(() => { saveState(state); }, [state]);
+
+  const toggleSet = (lift, idx) => {
+    setState((s) => {
+      const order = ["pending", "success", "failed"];
+      const cur = s.session.sets[lift][idx];
+      const next = order[(order.indexOf(cur) + 1) % 3];
+      const sets = { ...s.session.sets, [lift]: [...s.session.sets[lift]] };
+      sets[lift][idx] = next;
+      return { ...s, session: { ...s.session, sets } };
+    });
+  };
+  const setSessionWeight = (lift, val) => {
+    setState((s) => {
+      const v = Math.max(BAR[s.unit], val);
+      return { ...s, session: { ...s.session, weights: { ...s.session.weights, [lift]: v } } };
+    });
+  };
+  const setProgramWeight = (lift, val) => {
+    setState((s) => {
+      const v = Math.max(BAR[s.unit], val);
+      const session = s.session.sets[lift]
+        ? { ...s.session, weights: { ...s.session.weights, [lift]: v } }
+        : s.session;
+      return { ...s, weights: { ...s.weights, [lift]: v }, session };
+    });
+  };
+  const changeUnit = (unit) => {
+    setState((s) => {
+      if (s.unit === unit) return s;
+      const weights = convert(s.weights, s.unit, unit);
+      const session = { ...s.session, weights: convert(s.session.weights, s.unit, unit) };
+      const history = s.history.map((h) => ({
+        ...h,
+        lifts: h.lifts.map((lf) => ({ ...lf, weight: convert({ w: lf.weight }, s.unit, unit).w })),
+      }));
+      return { ...s, unit, weights, session, history };
+    });
+  };
+  const resetAll = () => {
+    const fresh = defaultState();
+    fresh.session = newSession(fresh.nextType, fresh.weights);
+    setState(fresh);
+    setTab("today");
+    setDetail(null);
+  };
+  const finishWorkout = () => {
+    setState((s) => {
+      const ses = s.session;
+      const inc = INC[s.unit];
+      const weights = { ...s.weights };
+      const streak = { ...s.failStreak };
+      const sumLifts = [];
+      const histLifts = [];
+      for (const l of WORKOUTS[ses.type]) {
+        const states = ses.sets[l.name];
+        const ok = states.every((x) => x === "success");
+        const from = ses.weights[l.name];
+        histLifts.push({ name: l.name, weight: from, success: ok, sets: states });
+        let to = from, status = "hold";
+        if (ok) {
+          to = from + inc[l.name];
+          streak[l.name] = 0;
+          status = "up";
+        } else {
+          streak[l.name] = (streak[l.name] || 0) + 1;
+          if (streak[l.name] >= 3) { to = deload(from, s.unit); streak[l.name] = 0; status = "deload"; }
+        }
+        weights[l.name] = to;
+        sumLifts.push({ name: l.name, from, to, status });
+      }
+      const nextType = ses.type === "A" ? "B" : "A";
+      setSummary({ type: ses.type, lifts: sumLifts });
+      return {
+        ...s,
+        weights,
+        failStreak: streak,
+        nextType,
+        workoutCount: s.workoutCount + 1,
+        history: [{ date: new Date().toISOString(), type: ses.type, lifts: histLifts }, ...s.history],
+        session: newSession(nextType, weights),
+      };
+    });
+  };
+
+  return (
+    <div className="flex justify-center w-full" style={{ background: "#e9e9ec", minHeight: "100dvh" }}>
+      <div
+        className="relative w-full max-w-md flex flex-col overflow-hidden"
+        style={{ background: BG, height: "100dvh", fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif" }}
+      >
+        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+          {detail ? (
+            <LiftDetail state={state} lift={detail} onBack={() => setDetail(null)} onToggle={toggleSet} onWeight={setSessionWeight} />
+          ) : tab === "today" ? (
+            <TodayView state={state} onOpen={setDetail} onFinish={finishWorkout} />
+          ) : tab === "progress" ? (
+            <ProgressView state={state} />
+          ) : (
+            <SettingsView state={state} onUnit={changeUnit} onWeight={setProgramWeight} onReset={resetAll} />
+          )}
+        </div>
+
+        {!detail && <BottomNav tab={tab} setTab={setTab} />}
+        {summary && <FinishModal summary={summary} unit={state.unit} onClose={() => { setSummary(null); setTab("today"); }} />}
+      </div>
+    </div>
+  );
+}
+
+/* ===================== TODAY ===================== */
+
+function TodayView({ state, onOpen, onFinish }) {
+  const ses = state.session;
+  const lifts = WORKOUTS[ses.type];
+  const today = new Date();
+  const weekday = today.toLocaleDateString(undefined, { weekday: "long" });
+  const dateStr = today.toLocaleDateString(undefined, { month: "long", day: "numeric" });
+
+  const trainDays = [1, 3, 5];
+  const dow = today.getDay();
+  let activeIdx = trainDays.indexOf(dow);
+  if (activeIdx === -1) activeIdx = trainDays.findIndex((d) => d > dow);
+  if (activeIdx === -1) activeIdx = 0;
+  const schedule = trainDays.map((d, i) => ({
+    label: ["Su", "Mon", "Tu", "Wed", "Th", "Fri", "Sa"][d],
+    type: (i - activeIdx) % 2 === 0 ? ses.type : ses.type === "A" ? "B" : "A",
+    active: i === activeIdx,
+  }));
+
+  const allLogged = lifts.every((l) => ses.sets[l.name].every((x) => x !== "pending"));
+  const anyLogged = lifts.some((l) => ses.sets[l.name].some((x) => x !== "pending"));
+
+  return (
+    <div className="px-5 pt-14 pb-40">
+      <div className="text-center mb-1">
+        <div style={{ color: ACCENT }} className="text-[12px] font-bold tracking-[0.14em] uppercase">StrongLifts 5×5</div>
+        <h1 style={{ color: INK }} className="text-[26px] font-bold mt-0.5 leading-tight">{weekday}</h1>
+        <div style={{ color: MUTE }} className="text-[13px] font-medium">{dateStr} · Workout {ses.type}</div>
+      </div>
+
+      <div className="flex gap-2 justify-center mt-5 mb-7">
+        {schedule.map((s, i) => (
+          <div key={i} className="flex-1 max-w-[96px] rounded-2xl py-2.5 px-2 text-center transition-all"
+            style={{ background: s.active ? ACCENT : "#fff", boxShadow: s.active ? "none" : CARD_SHADOW }}>
+            <div className="text-[12px] font-semibold" style={{ color: s.active ? "#fff" : MUTE }}>{s.label}</div>
+            <div className="text-[15px] font-bold mt-0.5" style={{ color: s.active ? "#fff" : INK }}>{s.type}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionLabel>Main Lifts</SectionLabel>
+
+      <div className="flex flex-col gap-3.5 mt-3">
+        {lifts.map((l, i) => {
+          const states = ses.sets[l.name];
+          const done = states.filter((x) => x === "success").length;
+          const failed = states.filter((x) => x === "failed").length;
+          const total = states.length;
+          const complete = states.every((x) => x !== "pending");
+          const firstIncomplete = lifts.findIndex((x) => ses.sets[x.name].some((y) => y === "pending"));
+          let status = "current";
+          if (complete) status = "done";
+          else if (i !== firstIncomplete) status = "upcoming";
+          return (
+            <LiftCard key={l.name} name={l.name} weight={ses.weights[l.name]} unit={state.unit}
+              done={done} failed={failed} total={total} status={status} onClick={() => onOpen(l.name)} />
+          );
+        })}
+      </div>
+
+      <div className="mt-7 flex items-start gap-3 px-1">
+        <Info size={20} color={ACCENT} className="shrink-0 mt-0.5" />
+        <p style={{ color: MUTE }} className="text-[13px] leading-relaxed">
+          Complete every set of 5 reps to add weight next time. Miss the same lift 3 workouts
+          in a row and it deloads 10%.
+        </p>
+      </div>
+
+      <div className="mt-8">
+        <button onClick={onFinish} disabled={!allLogged}
+          className="w-full rounded-2xl py-4 font-bold text-[16px] transition-all active:scale-[0.98]"
+          style={{
+            background: allLogged ? ACCENT : TRACK,
+            color: allLogged ? "#fff" : MUTE,
+            boxShadow: allLogged ? "0 6px 18px rgba(232,115,46,0.32)" : "none",
+          }}>
+          {allLogged ? `Finish Workout ${ses.type}` : "Log every set to finish"}
+        </button>
+        {anyLogged && !allLogged && (
+          <p style={{ color: MUTE }} className="text-[12px] text-center mt-2.5">Tap each lift to record your sets.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LiftCard({ name, weight, unit, done, failed, total, status, onClick }) {
+  const pct = (done / total) * 100;
+  return (
+    <button onClick={onClick} className="w-full text-left rounded-3xl bg-white p-4 transition-all active:scale-[0.985]"
+      style={{ boxShadow: CARD_SHADOW }}>
+      <div className="flex items-center gap-3.5">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+          style={{ background: status === "done" ? ACCENT_SOFT : "#f1f1f3" }}>
+          <Dumbbell size={22} color={status === "done" ? ACCENT : INK} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h3 style={{ color: INK }} className="text-[19px] font-bold truncate">{name}</h3>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {status === "upcoming" && <Pill>Upcoming</Pill>}
+              {status === "done" && (
+                <span className="flex items-center gap-1 text-[12px] font-semibold rounded-full px-2.5 py-1"
+                  style={{ background: ACCENT_SOFT, color: ACCENT }}>
+                  <Check size={13} strokeWidth={3} /> Done
+                </span>
+              )}
+              <ChevronRight size={20} color="#c4c4c8" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: TRACK }}>
+        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: ACCENT }} />
+      </div>
+      <div style={{ color: MUTE }} className="text-[13px] font-medium mt-2">
+        <span style={{ color: INK }} className="font-semibold">{fmt(weight)} {unit}</span>
+        {" · "}{done}/{total} sets{failed > 0 && ` · ${failed} failed`}
+      </div>
+    </button>
+  );
+}
+
+/* ===================== LIFT DETAIL ===================== */
+
+function LiftDetail({ state, lift, onBack, onToggle, onWeight }) {
+  const ses = state.session;
+  const def = WORKOUTS[ses.type].find((l) => l.name === lift);
+  const weight = ses.weights[lift];
+  const states = ses.sets[lift];
+  const unit = state.unit;
+  const plates = platesPerSide(weight, unit);
+
+  const last = (() => {
+    for (const h of state.history) {
+      const lf = h.lifts.find((x) => x.name === lift);
+      if (lf) return lf;
+    }
+    return null;
+  })();
+
+  const [rest, setRest] = useState(0);
+  const [resting, setResting] = useState(false);
+  useEffect(() => {
+    if (!resting) return;
+    if (rest <= 0) { setResting(false); beep(); return; }
+    const t = setTimeout(() => setRest((r) => r - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resting, rest]);
+
+  const startRest = (sec) => { ensureAudio(); setRest(sec); setResting(true); };
+  const mmss = `${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, "0")}`;
+
+  const handleTap = (idx) => {
+    ensureAudio();
+    const before = states[idx];
+    onToggle(lift, idx);
+    if (before === "pending") startRest(90);
+  };
+
+  return (
+    <div className="pb-32" style={{ background: BG }}>
+      <div className="px-5 pt-12 pb-4 sticky top-0 z-10" style={{ background: BG }}>
+        <div className="flex items-center gap-3">
+          <button onClick={onBack}
+            className="w-11 h-11 rounded-full bg-white flex items-center justify-center active:scale-95 transition-all"
+            style={{ boxShadow: CARD_SHADOW }}>
+            <ChevronLeft size={22} color={INK} />
+          </button>
+          <div>
+            <div style={{ color: MUTE }} className="text-[12px] font-semibold tracking-wide uppercase">Workout {ses.type}</div>
+            <h1 style={{ color: INK }} className="text-[22px] font-bold leading-tight">{lift}</h1>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5">
+        <div className="rounded-3xl bg-white p-5" style={{ boxShadow: CARD_SHADOW }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <div style={{ color: MUTE }} className="text-[12px] font-semibold uppercase tracking-wide">Working weight</div>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span style={{ color: INK }} className="text-[40px] font-bold leading-none">{fmt(weight)}</span>
+                <span style={{ color: MUTE }} className="text-[16px] font-semibold">{unit}</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <StepBtn onClick={() => onWeight(lift, weight - STEP[unit])}><Minus size={20} /></StepBtn>
+              <StepBtn onClick={() => onWeight(lift, weight + STEP[unit])} primary><Plus size={20} /></StepBtn>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${TRACK}` }}>
+            <div style={{ color: MUTE }} className="text-[12px] font-semibold uppercase tracking-wide mb-2">Each side of the bar</div>
+            {plates.length === 0 ? (
+              <span style={{ color: INK }} className="text-[14px] font-medium">Just the empty bar</span>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {plates.map((p, i) => (
+                  <span key={i} className="text-[13px] font-bold rounded-lg px-2.5 py-1.5"
+                    style={{ background: ACCENT_SOFT, color: ACCENT }}>{fmt(p)}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {last && (
+            <div className="mt-3 flex items-center gap-1.5">
+              <span style={{ color: MUTE }} className="text-[13px] font-medium">Last time:</span>
+              <span style={{ color: INK }} className="text-[13px] font-semibold">{fmt(last.weight)} {unit}</span>
+              {last.success
+                ? <Check size={15} color={ACCENT} strokeWidth={3} />
+                : <X size={15} color={FAIL} strokeWidth={3} />}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl bg-white p-4 mt-3.5" style={{ boxShadow: CARD_SHADOW }}>
+          {resting ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: ACCENT_SOFT }}>
+                  <Timer size={22} color={ACCENT} />
+                </div>
+                <div>
+                  <div style={{ color: MUTE }} className="text-[12px] font-semibold uppercase tracking-wide">Resting</div>
+                  <div style={{ color: INK }} className="text-[24px] font-bold leading-none tabular-nums">{mmss}</div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <SmallBtn onClick={() => setRest((r) => r + 30)}>+30s</SmallBtn>
+                <SmallBtn onClick={() => { setResting(false); setRest(0); }} danger>Skip</SmallBtn>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: "#f1f1f3" }}>
+                  <Timer size={22} color={INK} />
+                </div>
+                <span style={{ color: INK }} className="text-[15px] font-semibold">Rest timer</span>
+              </div>
+              <div className="flex gap-2">
+                {[90, 180, 300].map((s) => (
+                  <SmallBtn key={s} onClick={() => startRest(s)}>{s < 60 ? `${s}s` : `${s / 60}m`}</SmallBtn>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6">
+          <SectionLabel>{def.sets} {def.sets === 1 ? "set" : "sets"} × {def.reps} reps</SectionLabel>
+          <div className="flex flex-col gap-2.5 mt-3">
+            {states.map((st, i) => (
+              <SetRow key={i} index={i + 1} reps={def.reps} state={st} onTap={() => handleTap(i)} />
+            ))}
+          </div>
+          <p style={{ color: MUTE }} className="text-[12px] mt-3 px-1 leading-relaxed">
+            Tap a set: once for a clean 5 reps, twice to mark it failed. Warm up with lighter
+            sets before you start.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SetRow({ index, reps, state, onTap }) {
+  const cfg = {
+    pending: { bg: "#fff", border: "transparent", icon: null, iconBg: "#f1f1f3", iconColor: MUTE, text: INK, sub: MUTE },
+    success: { bg: ACCENT_SOFT, border: ACCENT, icon: "check", iconBg: ACCENT, iconColor: "#fff", text: INK, sub: ACCENT },
+    failed: { bg: FAIL_SOFT, border: FAIL, icon: "x", iconBg: FAIL, iconColor: "#fff", text: INK, sub: FAIL },
+  }[state];
+  return (
+    <button onClick={onTap}
+      className="w-full flex items-center gap-3.5 rounded-2xl px-4 py-3.5 transition-all active:scale-[0.985]"
+      style={{ background: cfg.bg, boxShadow: CARD_SHADOW, border: `1.5px solid ${cfg.border}` }}>
+      <div className="w-9 h-9 rounded-full flex items-center justify-center transition-all" style={{ background: cfg.iconBg }}>
+        {cfg.icon === "check" && <Check size={18} color={cfg.iconColor} strokeWidth={3} />}
+        {cfg.icon === "x" && <X size={18} color={cfg.iconColor} strokeWidth={3} />}
+        {!cfg.icon && <span className="text-[14px] font-bold" style={{ color: cfg.iconColor }}>{index}</span>}
+      </div>
+      <div className="flex-1 text-left">
+        <div style={{ color: cfg.text }} className="text-[15px] font-bold">Set {index}</div>
+        <div style={{ color: cfg.sub }} className="text-[13px] font-medium">
+          {state === "pending" && `Target ${reps} reps`}
+          {state === "success" && `${reps} reps · complete`}
+          {state === "failed" && "Missed reps"}
+        </div>
+      </div>
+      <span className="text-[20px] font-bold tabular-nums" style={{ color: cfg.sub }}>
+        {state === "failed" ? "—" : reps}
+      </span>
+    </button>
+  );
+}
+
+/* ===================== PROGRESS ===================== */
+
+function ProgressView({ state }) {
+  const { history, unit } = state;
+
+  const totalVolume = history.reduce((sum, h) =>
+    sum + h.lifts.reduce((s, lf) => s + lf.weight * 5 * lf.sets.filter((x) => x === "success").length, 0), 0);
+
+  const series = {};
+  for (const lift of ALL_LIFTS) {
+    const pts = [];
+    for (let i = history.length - 1; i >= 0; i--) {
+      const lf = history[i].lifts.find((x) => x.name === lift);
+      if (lf) pts.push(lf.weight);
+    }
+    pts.push(state.session.sets[lift] ? state.session.weights[lift] : state.weights[lift]);
+    series[lift] = pts;
+  }
+
+  return (
+    <div className="px-5 pt-14 pb-40">
+      <h1 style={{ color: INK }} className="text-[26px] font-bold text-center">Progress</h1>
+      <p style={{ color: MUTE }} className="text-[13px] font-medium text-center mt-0.5">Your StrongLifts journey</p>
+
+      <div className="grid grid-cols-2 gap-3 mt-6">
+        <StatTile icon={<Trophy size={20} color={ACCENT} />} value={state.workoutCount} label="Workouts done" />
+        <StatTile icon={<Zap size={20} color={ACCENT} />}
+          value={totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : comma(totalVolume)}
+          label={`Total volume (${unit})`} />
+      </div>
+
+      <div className="mt-7">
+        <SectionLabel>Current Lifts</SectionLabel>
+        <div className="rounded-3xl bg-white mt-3 overflow-hidden" style={{ boxShadow: CARD_SHADOW }}>
+          {ALL_LIFTS.map((lift, i) => {
+            const pts = series[lift];
+            const cur = pts[pts.length - 1];
+            const delta = cur - pts[0];
+            return (
+              <div key={lift} className="flex items-center gap-3 px-4 py-3.5"
+                style={{ borderTop: i === 0 ? "none" : `1px solid ${TRACK}` }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#f1f1f3" }}>
+                  <Dumbbell size={17} color={INK} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div style={{ color: INK }} className="text-[15px] font-bold truncate">{lift}</div>
+                  <div className="flex items-center gap-1">
+                    <span style={{ color: MUTE }} className="text-[12px] font-medium">{fmt(cur)} {unit}</span>
+                    {delta > 0 && (
+                      <span style={{ color: ACCENT }} className="text-[12px] font-semibold flex items-center">
+                        <TrendingUp size={11} strokeWidth={3} className="mr-0.5" />+{fmt(delta)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Sparkline data={pts} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-7">
+        <SectionLabel>History</SectionLabel>
+        {history.length === 0 ? (
+          <div className="rounded-3xl bg-white mt-3 px-5 py-8 text-center" style={{ boxShadow: CARD_SHADOW }}>
+            <Calendar size={28} color="#c4c4c8" className="mx-auto" />
+            <p style={{ color: MUTE }} className="text-[14px] font-medium mt-2">No workouts logged yet.</p>
+            <p style={{ color: MUTE }} className="text-[12px] mt-0.5">Finish your first workout to see it here.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 mt-3">
+            {history.map((h, i) => (
+              <div key={i} className="rounded-3xl bg-white p-4" style={{ boxShadow: CARD_SHADOW }}>
+                <div className="flex items-center justify-between">
+                  <span style={{ color: INK }} className="text-[15px] font-bold">Workout {h.type}</span>
+                  <span style={{ color: MUTE }} className="text-[12px] font-medium">
+                    {new Date(h.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1.5 mt-2.5">
+                  {h.lifts.map((lf) => (
+                    <div key={lf.name} className="flex items-center justify-between">
+                      <span style={{ color: MUTE }} className="text-[13px] font-medium">{lf.name}</span>
+                      <span className="flex items-center gap-1.5">
+                        <span style={{ color: INK }} className="text-[13px] font-semibold">{fmt(lf.weight)} {unit}</span>
+                        {lf.success
+                          ? <Check size={14} color={ACCENT} strokeWidth={3} />
+                          : <X size={14} color={FAIL} strokeWidth={3} />}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Sparkline({ data, width = 60, height = 28 }) {
+  if (!data || data.length < 2) {
+    return <div style={{ width, height }} className="flex items-center justify-center">
+      <span style={{ color: "#c4c4c8" }} className="text-[11px]">—</span>
+    </div>;
+  }
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * (width - 4) + 2;
+    const y = height - 3 - ((v - min) / range) * (height - 8);
+    return `${x},${y}`;
+  });
+  const last = pts[pts.length - 1].split(",");
+  return (
+    <svg width={width} height={height} className="shrink-0">
+      <polyline points={pts.join(" ")} fill="none" stroke={ACCENT} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r={3} fill={ACCENT} />
+    </svg>
+  );
+}
+
+/* ===================== SETTINGS ===================== */
+
+function SettingsView({ state, onUnit, onWeight, onReset }) {
+  const [confirm, setConfirm] = useState(false);
+  const unit = state.unit;
+
+  return (
+    <div className="px-5 pt-14 pb-40">
+      <h1 style={{ color: INK }} className="text-[26px] font-bold text-center">Settings</h1>
+
+      <div className="mt-6">
+        <SectionLabel>Units</SectionLabel>
+        <div className="rounded-2xl p-1 mt-3 flex" style={{ background: "#e6e6e9" }}>
+          {["lbs", "kg"].map((u) => (
+            <button key={u} onClick={() => onUnit(u)}
+              className="flex-1 rounded-xl py-2.5 text-[15px] font-semibold transition-all"
+              style={{
+                background: unit === u ? "#fff" : "transparent",
+                color: unit === u ? INK : MUTE,
+                boxShadow: unit === u ? CARD_SHADOW : "none",
+              }}>
+              {u === "lbs" ? "Pounds (lbs)" : "Kilograms (kg)"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-7">
+        <SectionLabel>Working Weights</SectionLabel>
+        <div className="rounded-3xl bg-white mt-3 overflow-hidden" style={{ boxShadow: CARD_SHADOW }}>
+          {ALL_LIFTS.map((lift, i) => {
+            const w = state.session.sets[lift] ? state.session.weights[lift] : state.weights[lift];
+            return (
+              <div key={lift} className="flex items-center justify-between px-4 py-3"
+                style={{ borderTop: i === 0 ? "none" : `1px solid ${TRACK}` }}>
+                <div>
+                  <div style={{ color: INK }} className="text-[15px] font-bold">{lift}</div>
+                  <div style={{ color: MUTE }} className="text-[12px] font-medium">+{fmt(INC[unit][lift])} {unit} per success</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <StepBtn small onClick={() => onWeight(lift, w - STEP[unit])}><Minus size={16} /></StepBtn>
+                  <span style={{ color: INK }} className="text-[16px] font-bold tabular-nums w-14 text-center">{fmt(w)}</span>
+                  <StepBtn small primary onClick={() => onWeight(lift, w + STEP[unit])}><Plus size={16} /></StepBtn>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-7">
+        <SectionLabel>The Program</SectionLabel>
+        <div className="rounded-3xl bg-white mt-3 p-4" style={{ boxShadow: CARD_SHADOW }}>
+          <p style={{ color: MUTE }} className="text-[13px] leading-relaxed">
+            StrongLifts 5×5 runs two alternating workouts, three days a week.
+            <span style={{ color: INK }} className="font-semibold"> Workout A</span> is Squat,
+            Bench Press and Barbell Row. <span style={{ color: INK }} className="font-semibold">Workout B</span> is
+            Squat, Overhead Press and Deadlift. Every lift is 5 sets of 5 — except the Deadlift,
+            which is a single set of 5.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-7">
+        {!confirm ? (
+          <button onClick={() => setConfirm(true)}
+            className="w-full rounded-2xl py-3.5 font-semibold text-[15px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            style={{ background: "#fff", color: FAIL, boxShadow: CARD_SHADOW }}>
+            <RotateCcw size={17} /> Reset all progress
+          </button>
+        ) : (
+          <div className="rounded-2xl bg-white p-4" style={{ boxShadow: CARD_SHADOW }}>
+            <p style={{ color: INK }} className="text-[14px] font-semibold text-center">Erase all weights and history?</p>
+            <div className="flex gap-2.5 mt-3">
+              <button onClick={() => setConfirm(false)}
+                className="flex-1 rounded-xl py-3 font-semibold text-[14px]" style={{ background: "#f1f1f3", color: INK }}>
+                Cancel
+              </button>
+              <button onClick={() => { onReset(); setConfirm(false); }}
+                className="flex-1 rounded-xl py-3 font-semibold text-[14px] text-white" style={{ background: FAIL }}>
+                Reset
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <p style={{ color: "#b0b0b4" }} className="text-[11px] text-center mt-6">
+        Your progress is saved automatically in this browser.
+      </p>
+    </div>
+  );
+}
+
+/* ===================== FINISH MODAL ===================== */
+
+function FinishModal({ summary, unit, onClose }) {
+  return (
+    <div className="absolute inset-0 z-50 flex items-end justify-center"
+      style={{ background: "rgba(20,20,28,0.45)" }}>
+      <div className="w-full max-w-md rounded-t-[28px] bg-white px-5 pt-7 pb-8"
+        style={{ animation: "slideUp 0.28s cubic-bezier(0.16,1,0.3,1)" }}>
+        <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: ACCENT_SOFT }}>
+            <Trophy size={30} color={ACCENT} />
+          </div>
+          <h2 style={{ color: INK }} className="text-[22px] font-bold mt-3">Workout {summary.type} Complete</h2>
+          <p style={{ color: MUTE }} className="text-[13px] font-medium mt-0.5">Here's what changed for next time</p>
+        </div>
+
+        <div className="flex flex-col gap-2 mt-5">
+          {summary.lifts.map((l) => {
+            const cfg = {
+              up: { label: "Weight up", color: ACCENT, bg: ACCENT_SOFT },
+              hold: { label: "Repeat weight", color: MUTE, bg: "#f1f1f3" },
+              deload: { label: "Deload 10%", color: FAIL, bg: FAIL_SOFT },
+            }[l.status];
+            return (
+              <div key={l.name} className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ background: cfg.bg }}>
+                <div>
+                  <div style={{ color: INK }} className="text-[15px] font-bold">{l.name}</div>
+                  <div style={{ color: cfg.color }} className="text-[12px] font-semibold">{cfg.label}</div>
+                </div>
+                <div className="flex items-center gap-2 tabular-nums">
+                  <span style={{ color: MUTE }} className="text-[14px] font-semibold">{fmt(l.from)}</span>
+                  <ChevronRight size={15} color={MUTE} />
+                  <span style={{ color: cfg.color }} className="text-[17px] font-bold">{fmt(l.to)}</span>
+                  <span style={{ color: MUTE }} className="text-[12px] font-medium">{unit}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button onClick={onClose}
+          className="w-full rounded-2xl py-4 font-bold text-[16px] text-white mt-5 active:scale-[0.98] transition-all"
+          style={{ background: ACCENT, boxShadow: "0 6px 18px rgba(232,115,46,0.32)" }}>
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== SHARED UI ===================== */
+
+function BottomNav({ tab, setTab }) {
+  const items = [
+    { id: "today", label: "Today", icon: Dumbbell },
+    { id: "progress", label: "Progress", icon: BarChart3 },
+    { id: "settings", label: "Settings", icon: SettingsIcon },
+  ];
+  return (
+    <div className="absolute bottom-0 left-0 right-0 flex justify-center pt-2 pointer-events-none"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}>
+      <div className="flex gap-1 bg-white rounded-full px-2 py-2 pointer-events-auto"
+        style={{ boxShadow: "0 6px 24px rgba(17,17,26,0.14)" }}>
+        {items.map((it) => {
+          const active = tab === it.id;
+          const Icon = it.icon;
+          return (
+            <button key={it.id} onClick={() => setTab(it.id)}
+              className="flex items-center gap-2 rounded-full px-5 py-2.5 transition-all"
+              style={{ background: active ? ACCENT_SOFT : "transparent" }}>
+              <Icon size={21} color={active ? ACCENT : MUTE} strokeWidth={active ? 2.4 : 2} />
+              {active && <span style={{ color: ACCENT }} className="text-[14px] font-bold">{it.label}</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ children }) {
+  return <div style={{ color: MUTE }} className="text-[12px] font-bold tracking-[0.13em] uppercase px-1">{children}</div>;
+}
+
+function Pill({ children }) {
+  return (
+    <span className="flex items-center gap-1 text-[12px] font-semibold rounded-full px-2.5 py-1"
+      style={{ background: "#eeeef0", color: MUTE }}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#c0c0c4" }} />
+      {children}
+    </span>
+  );
+}
+
+function StatTile({ icon, value, label }) {
+  return (
+    <div className="rounded-3xl bg-white p-4" style={{ boxShadow: CARD_SHADOW }}>
+      <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: ACCENT_SOFT }}>{icon}</div>
+      <div style={{ color: INK }} className="text-[26px] font-bold mt-2 leading-none">{value}</div>
+      <div style={{ color: MUTE }} className="text-[12px] font-medium mt-1">{label}</div>
+    </div>
+  );
+}
+
+function StepBtn({ children, onClick, primary, small }) {
+  const size = small ? "w-9 h-9" : "w-12 h-12";
+  return (
+    <button onClick={onClick}
+      className={`${size} rounded-2xl flex items-center justify-center active:scale-90 transition-all`}
+      style={{ background: primary ? ACCENT : "#f1f1f3", color: primary ? "#fff" : INK }}>
+      {children}
+    </button>
+  );
+}
+
+function SmallBtn({ children, onClick, danger }) {
+  return (
+    <button onClick={onClick}
+      className="rounded-xl px-3 py-2 text-[13px] font-bold active:scale-95 transition-all"
+      style={{ background: danger ? FAIL_SOFT : "#f1f1f3", color: danger ? FAIL : INK }}>
+      {children}
+    </button>
+  );
+}
+
+/* ---------- mount ---------- */
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
